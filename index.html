@@ -1,1 +1,517 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zultra AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            transition: background-color 0.3s ease;
+        }
+        .chat-bubble-user {
+            background-color: #3b82f6;
+            color: white;
+            border-top-right-radius: 0.75rem;
+            border-bottom-right-radius: 0.75rem;
+            border-top-left-radius: 0.75rem;
+            border-bottom-left-radius: 0.75rem;
+        }
+        .chat-bubble-ai {
+            background-color: #e5e7eb;
+            color: #1f2937;
+            border-top-right-radius: 0.75rem;
+            border-bottom-right-radius: 0.75rem;
+            border-bottom-left-radius: 0.75rem;
+            border-top-left-radius: 0.75rem;
+        }
+        .dark .chat-bubble-ai {
+            background-color: #374151;
+            color: #e5e7eb;
+        }
+        .spinner {
+            border-top-color: #3498db;
+            -webkit-animation: spinner 1.5s linear infinite;
+            animation: spinner 1.5s linear infinite;
+        }
+        @-webkit-keyframes spinner {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
 
+    <!-- Main App Container -->
+    <div id="appContainer" class="h-screen flex flex-col items-center justify-between p-4 bg-gray-100 dark:bg-gray-900">
+        <!-- Header with title and theme and settings toggle -->
+        <header class="w-full max-w-3xl flex justify-between items-center p-4">
+            <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100">Zultra AI</h1>
+            <div class="flex space-x-2 items-center">
+                <button id="openSettingsBtn" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 transition-colors shadow-md text-sm font-semibold">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
+                <!-- Moon icon for light mode -->
+                <button id="themeToggle" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 transition-colors">
+                    <svg id="moonIcon" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                    <!-- Sun icon for dark mode -->
+                    <svg id="sunIcon" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Chat history area -->
+        <div id="chatHistory" class="flex-1 w-full max-w-3xl overflow-y-auto p-4 space-y-4 scroll-smooth">
+            <!-- Chat messages will be dynamically added here -->
+        </div>
+        
+        <!-- Input area -->
+        <div class="w-full max-w-3xl flex flex-col p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
+            <!-- Uploaded files preview -->
+            <div id="uploadedFilesContainer" class="flex flex-wrap items-center p-2 mb-2 space-x-2 hidden">
+                <!-- File previews will be dynamically added here -->
+            </div>
+            <div class="flex items-center w-full">
+                <textarea id="promptInput" rows="1" class="flex-1 p-2 text-gray-700 dark:text-gray-200 bg-transparent resize-none focus:outline-none placeholder-gray-400 dark:placeholder-gray-500" placeholder="Type your message..."></textarea>
+                <label for="fileUpload" class="ml-4 p-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-full cursor-pointer hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    </svg>
+                </label>
+                <input type="file" id="fileUpload" class="hidden" multiple />
+                <button id="sendBtn" class="ml-4 p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors shadow-md">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Settings Modal -->
+    <div id="mainSettingsModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg">
+            <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">Settings</h2>
+            
+            <!-- Tab Buttons -->
+            <div class="flex border-b border-gray-200 dark:border-gray-700 mb-4">
+                <button id="apiTabBtn" class="tab-btn px-4 py-2 text-gray-800 dark:text-gray-100 font-semibold border-b-2 border-transparent hover:border-blue-600 transition-colors">API Settings</button>
+            </div>
+            
+            <!-- Tab Content -->
+            <div id="apiTabContent" class="tab-content">
+                <div class="mb-4">
+                    <label for="apiKeyInput" class="block text-gray-700 dark:text-gray-300 mb-2">API Key:</label>
+                    <input type="password" id="apiKeyInput" class="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your API Key">
+                </div>
+                <div class="mb-4">
+                    <label for="apiUrlInput" class="block text-gray-700 dark:text-gray-300 mb-2">API URL:</label>
+                    <input type="text" id="apiUrlInput" class="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter API URL">
+                </div>
+                <p class="text-red-500 text-sm mt-4">You have to provide your own API key/URL.</p>
+                <div class="flex justify-end space-x-2 mt-4">
+                    <button id="saveApiSettingsBtn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">Save</button>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-2 mt-4">
+                <button id="closeMainSettingsBtn" class="bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Message/Alert Box -->
+    <div id="messageBox" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl text-center max-w-sm w-full">
+            <p id="messageText" class="text-gray-800 dark:text-gray-100 mb-4"></p>
+            <button id="closeMessage" class="bg-blue-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-blue-700 transition-colors">OK</button>
+        </div>
+    </div>
+
+    <!-- Top-right Notification -->
+    <div id="notification" class="hidden fixed top-4 right-4 z-50">
+        <div class="bg-green-500 text-white p-4 rounded-lg shadow-lg flex items-center space-x-2">
+            <span id="notificationMessage"></span>
+            <button id="closeNotificationBtn" class="text-white hover:text-gray-200">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script type="module">
+        // UI Element References
+        const openSettingsBtn = document.getElementById('openSettingsBtn');
+        const mainSettingsModal = document.getElementById('mainSettingsModal');
+        const closeMainSettingsBtn = document.getElementById('closeMainSettingsBtn');
+        
+        const apiTabBtn = document.getElementById('apiTabBtn');
+        const apiTabContent = document.getElementById('apiTabContent');
+
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const apiUrlInput = document.getElementById('apiUrlInput');
+        const saveApiSettingsBtn = document.getElementById('saveApiSettingsBtn');
+        
+        const messageBox = document.getElementById('messageBox');
+        const messageText = document.getElementById('messageText');
+        const closeMessageBtn = document.getElementById('closeMessage');
+        const fileUploadInput = document.getElementById('fileUpload');
+        const uploadedFilesContainer = document.getElementById('uploadedFilesContainer');
+        const sendBtn = document.getElementById('sendBtn');
+        const promptInput = document.getElementById('promptInput');
+        const chatHistory = document.getElementById('chatHistory');
+        const notification = document.getElementById('notification');
+        const notificationMessage = document.getElementById('notificationMessage');
+        const closeNotificationBtn = document.getElementById('closeNotificationBtn');
+        const body = document.body;
+
+        let uploadedFiles = [];
+        let currentApiKey = localStorage.getItem('currentApiKey') || '';
+        let currentApiUrl = localStorage.getItem('currentApiUrl') || '';
+
+        // --- Core Functions ---
+        function showMessage(text) {
+            messageText.textContent = text;
+            messageBox.classList.remove('hidden');
+        }
+
+        function showNotification(text) {
+            notificationMessage.textContent = text;
+            notification.classList.remove('hidden');
+            setTimeout(() => {
+                notification.classList.add('hidden');
+            }, 3000);
+        }
+
+        function displayUploadedFiles() {
+            uploadedFilesContainer.innerHTML = '';
+            if (uploadedFiles.length > 0) {
+                uploadedFilesContainer.classList.remove('hidden');
+            } else {
+                uploadedFilesContainer.classList.add('hidden');
+            }
+
+            uploadedFiles.forEach((file, index) => {
+                const filePreview = document.createElement('div');
+                filePreview.classList.add('relative', 'flex', 'items-center', 'p-2', 'bg-gray-200', 'dark:bg-gray-700', 'rounded-lg');
+                
+                if (file.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    img.classList.add('h-16', 'w-16', 'object-cover', 'rounded-lg', 'mr-2');
+                    filePreview.appendChild(img);
+                }
+                
+                const fileNameSpan = document.createElement('span');
+                fileNameSpan.classList.add('text-sm', 'text-gray-800', 'dark:text-gray-200', 'mr-2');
+                fileNameSpan.textContent = file.name;
+                filePreview.appendChild(fileNameSpan);
+
+                const removeBtn = document.createElement('button');
+                removeBtn.classList.add('remove-file-btn', 'text-red-500', 'hover:text-red-700', 'text-sm', 'font-bold');
+                removeBtn.dataset.index = index;
+                removeBtn.textContent = 'X';
+                filePreview.appendChild(removeBtn);
+
+                uploadedFilesContainer.appendChild(filePreview);
+            });
+        }
+        
+        function addMessage(text, sender, citations = [], thinkingTime = null) {
+            const messageContainer = document.createElement('div');
+            const bubble = document.createElement('div');
+            const citationsDiv = document.createElement('div');
+            const thinkingTimeDiv = document.createElement('div');
+            
+            if (sender === 'user') {
+                messageContainer.classList.add('flex', 'justify-end', 'mb-2');
+                bubble.classList.add('chat-bubble-user', 'p-3', 'rounded-lg', 'max-w-md', 'break-words', 'shadow-lg');
+            } else {
+                messageContainer.classList.add('flex', 'justify-start', 'mb-2');
+                bubble.classList.add('chat-bubble-ai', 'p-3', 'rounded-lg', 'max-w-md', 'break-words', 'shadow-lg');
+                
+                const copyButton = document.createElement('button');
+                copyButton.textContent = 'Copy';
+                copyButton.classList.add('text-sm', 'text-blue-500', 'font-semibold', 'mt-2', 'hover:underline');
+                copyButton.addEventListener('click', () => {
+                    const textToCopy = bubble.textContent.replace('Copy', '').trim();
+                    const tempTextarea = document.createElement('textarea');
+                    tempTextarea.value = textToCopy;
+                    document.body.appendChild(tempTextarea);
+                    tempTextarea.select();
+                    try {
+                        document.execCommand('copy');
+                        showMessage("Text copied to clipboard!");
+                    } catch (err) {
+                        console.error('Failed to copy text: ', err);
+                        showMessage("Could not copy text to clipboard.");
+                    } finally {
+                        document.body.removeChild(tempTextarea);
+                    }
+                });
+                bubble.appendChild(copyButton);
+
+                if (citations.length > 0) {
+                    citationsDiv.classList.add('text-xs', 'text-gray-500', 'mt-2');
+                    const citationText = "Citations: " + citations.map(s => s.title).join(', ');
+                    citationsDiv.textContent = citationText;
+                }
+            }
+            
+            bubble.innerHTML = text;
+            messageContainer.appendChild(bubble);
+            if (citations.length > 0) {
+                 messageContainer.appendChild(citationsDiv);
+            }
+            if (thinkingTime !== null) {
+                thinkingTimeDiv.classList.add('text-xs', 'text-gray-500', 'mt-1', 'italic');
+                thinkingTimeDiv.textContent = `Thought for: ${thinkingTime.toFixed(2)}s`;
+                bubble.appendChild(thinkingTimeDiv);
+            }
+            chatHistory.appendChild(messageContainer);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        function addLoadingIndicator() {
+            const typingIndicator = document.createElement('div');
+            typingIndicator.id = 'loadingIndicator';
+            typingIndicator.classList.add('flex', 'justify-start', 'mb-2', 'p-3', 'rounded-lg', 'max-w-md');
+            typingIndicator.innerHTML = '<div class="spinner h-5 w-5 rounded-full border-2 border-gray-400"></div>';
+            chatHistory.appendChild(typingIndicator);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        function removeLoadingIndicator() {
+            const indicator = document.getElementById('loadingIndicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+
+        async function fileToGenerativePart(file) {
+            const base64EncodedDataPromise = new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                reader.readAsDataURL(file);
+            });
+            return {
+                inlineData: {
+                    data: await base64EncodedDataPromise,
+                    mimeType: file.type,
+                }
+            };
+        }
+        
+        function setSelectedTheme(gradient) {
+            themeOptionBtns.forEach(btn => btn.classList.remove('ring-4', 'ring-offset-2', 'ring-blue-500'));
+            const selectedBtn = document.querySelector(`button[data-gradient="${gradient}"]`);
+            if (selectedBtn) {
+                selectedBtn.classList.add('ring-4', 'ring-offset-2', 'ring-blue-500');
+            }
+        }
+
+        // --- Event Listeners and Initial Setup ---
+        window.onload = function() {
+            const themeToggle = document.getElementById('themeToggle');
+            const sunIcon = document.getElementById('sunIcon');
+            const moonIcon = document.getElementById('moonIcon');
+            const saveApiSettingsBtn = document.getElementById('saveApiSettingsBtn');
+            const apiTabBtn = document.getElementById('apiTabBtn');
+            const apiTabContent = document.getElementById('apiTabContent');
+            const openSettingsBtn = document.getElementById('openSettingsBtn');
+            const mainSettingsModal = document.getElementById('mainSettingsModal');
+            const closeMainSettingsBtn = document.getElementById('closeMainSettingsBtn');
+            const apiKeyInput = document.getElementById('apiKeyInput');
+            const apiUrlInput = document.getElementById('apiUrlInput');
+            const closeMessageBtn = document.getElementById('closeMessage');
+            const fileUploadInput = document.getElementById('fileUpload');
+            const uploadedFilesContainer = document.getElementById('uploadedFilesContainer');
+            const sendBtn = document.getElementById('sendBtn');
+            const promptInput = document.getElementById('promptInput');
+            const chatHistory = document.getElementById('chatHistory');
+            const notification = document.getElementById('notification');
+            const notificationMessage = document.getElementById('notificationMessage');
+            const closeNotificationBtn = document.getElementById('closeNotificationBtn');
+            
+            closeMessageBtn.addEventListener('click', () => messageBox.classList.add('hidden'));
+            closeNotificationBtn.addEventListener('click', () => notification.classList.add('hidden'));
+
+            // Load saved settings
+            apiKeyInput.value = localStorage.getItem('currentApiKey') || '';
+            apiUrlInput.value = localStorage.getItem('currentApiUrl') || '';
+
+            // Dark mode toggle
+            const isDarkMode = localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            if (isDarkMode) {
+                document.documentElement.classList.add('dark');
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+            } else {
+                document.documentElement.classList.remove('dark');
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            }
+
+            themeToggle.addEventListener('click', () => {
+                const htmlEl = document.documentElement;
+                if (htmlEl.classList.contains('dark')) {
+                    htmlEl.classList.remove('dark');
+                    sunIcon.classList.add('hidden');
+                    moonIcon.classList.remove('hidden');
+                    localStorage.setItem('theme', 'light');
+                } else {
+                    document.documentElement.classList.add('dark');
+                    sunIcon.classList.remove('hidden');
+                    moonIcon.classList.add('hidden');
+                    localStorage.setItem('theme', 'dark');
+                }
+            });
+
+            // Settings modal functionality
+            openSettingsBtn.addEventListener('click', () => {
+                mainSettingsModal.classList.remove('hidden');
+            });
+
+            closeMainSettingsBtn.addEventListener('click', () => {
+                mainSettingsModal.classList.add('hidden');
+            });
+            
+            saveApiSettingsBtn.addEventListener('click', () => {
+                currentApiKey = apiKeyInput.value.trim();
+                currentApiUrl = apiUrlInput.value.trim();
+                localStorage.setItem('currentApiKey', currentApiKey);
+                localStorage.setItem('currentApiUrl', currentApiUrl);
+                mainSettingsModal.classList.add('hidden');
+                showNotification("API settings saved!");
+            });
+
+            // Handle file selection
+            fileUploadInput.addEventListener('change', (event) => {
+                uploadedFiles = [...event.target.files];
+                displayUploadedFiles();
+            });
+
+            // Handle file removal
+            uploadedFilesContainer.addEventListener('click', (event) => {
+                if (event.target.classList.contains('remove-file-btn')) {
+                    const index = event.target.dataset.index;
+                    uploadedFiles.splice(index, 1);
+                    fileUploadInput.value = ''; // Reset file input
+                    displayUploadedFiles();
+                }
+            });
+
+            sendBtn.addEventListener('click', async () => {
+                const prompt = promptInput.value.trim();
+                if (!prompt && uploadedFiles.length === 0) {
+                    showMessage("Please enter a prompt or upload a file before generating.");
+                    return;
+                }
+                
+                if (!currentApiKey || !currentApiUrl) {
+                    addMessage("Please Check your API Settings. (You can look up the API URL for the AI you're Using, and for the API KEY, you will have to go to the AI's Website and look for  \"API\" or \"API Keys\" in your profile tab.)", 'ai');
+                    return;
+                }
+
+                addMessage(prompt, 'user');
+                promptInput.value = '';
+                promptInput.style.height = 'auto';
+
+                addLoadingIndicator();
+                
+                let generatedText = "I'm sorry, I couldn't generate a response. Please check your network connection and try again.";
+                let sources = [];
+                let payload;
+                const startTime = performance.now();
+
+                try {
+                    const apiKey = currentApiKey;
+                    const apiUrl = currentApiUrl;
+                    
+                    if (uploadedFiles.length > 0) {
+                        const fileParts = await Promise.all(uploadedFiles.map(file => fileToGenerativePart(file)));
+                        payload = {
+                            contents: [{
+                                parts: [{ text: prompt }, ...fileParts]
+                            }],
+                            tools: [{ "google_search": {} }]
+                        };
+                    } else {
+                        payload = {
+                            contents: [{ parts: [{ text: prompt }] }],
+                            tools: [{ "google_search": {} }]
+                        };
+                    }
+
+                    let retries = 0;
+                    const maxRetries = 3;
+                    let response;
+                    while (retries < maxRetries) {
+                        try {
+                            response = await fetch(`${apiUrl}?key=${apiKey}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+                            if (response.ok) {
+                                break;
+                            }
+                        } catch (error) {
+                            console.error(`Fetch attempt ${retries + 1} failed:`, error);
+                        }
+                        retries++;
+                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retries) * 1000));
+                    }
+                    
+                    if (!response.ok) {
+                        throw new Error(`API call failed with status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    const candidate = result.candidates?.[0];
+                    if (candidate && candidate.content?.parts?.[0]?.text) {
+                        generatedText = candidate.content.parts[0].text;
+                        const groundingMetadata = candidate.groundingAttributions;
+                        if (groundingMetadata && groundingMetadata.groundingAttributions) {
+                            sources = groundingMetadata.groundingAttributions
+                                .map(attribution => ({ uri: attribution.web?.uri, title: attribution.web?.title, }))
+                                .filter(source => source.uri && source.title);
+                        }
+                    }
+                } catch (error) {
+                    console.error('An error occurred:', error);
+                    showMessage("Failed to get a response. Please check your network connection and try again.");
+                } finally {
+                    const endTime = performance.now();
+                    const thinkingTime = (endTime - startTime) / 1000;
+                    removeLoadingIndicator();
+                    addMessage(generatedText, 'ai', sources, thinkingTime);
+                    uploadedFiles = [];
+                    displayUploadedFiles();
+                }
+            });
+            
+            promptInput.addEventListener('input', () => {
+                promptInput.style.height = 'auto';
+                promptInput.style.height = promptInput.scrollHeight + 'px';
+            });
+        };
+    </script>
+</body>
+</html>
