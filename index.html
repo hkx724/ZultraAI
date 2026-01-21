@@ -1,517 +1,625 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zultra AI</title>
+    <title>Zultra Modeler</title>
+    <!-- Tailwind CSS CDN for styling the UI -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
+        /* Custom styles for the body and overall vertical layout */
         body {
-            font-family: 'Montserrat', sans-serif;
-            transition: background-color 0.3s ease;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow: hidden; /* Prevent scrollbars */
+            display: flex;
+            flex-direction: column; /* Stack top bar and main content vertically */
+            height: 100vh;
+            background-color: #1f2937; /* Dark background */
         }
-        .chat-bubble-user {
-            background-color: #3b82f6;
-            color: white;
-            border-top-right-radius: 0.75rem;
-            border-bottom-right-radius: 0.75rem;
-            border-top-left-radius: 0.75rem;
-            border-bottom-left-radius: 0.75rem;
+        
+        /* New wrapper for Left Panel + Canvas */
+        #main-content-wrapper {
+            display: flex; /* Horizontal split */
+            flex-grow: 1;
+            overflow: hidden;
         }
-        .chat-bubble-ai {
-            background-color: #e5e7eb;
-            color: #1f2937;
-            border-top-right-radius: 0.75rem;
-            border-bottom-right-radius: 0.75rem;
-            border-bottom-left-radius: 0.75rem;
-            border-top-left-radius: 0.75rem;
+
+        #left-panel {
+            width: 256px; /* Fixed width for the panel */
+            background-color: #374151; /* Slightly lighter gray for the panel */
+            flex-shrink: 0;
+            overflow-y: auto;
+            border-right: 1px solid #1f2937;
+            display: flex; /* Enable flex for vertical content distribution */
+            flex-direction: column;
         }
-        .dark .chat-bubble-ai {
-            background-color: #374151;
-            color: #e5e7eb;
+
+        #canvas-container {
+            flex-grow: 1; /* Take up all remaining space */
+            position: relative;
         }
-        .spinner {
-            border-top-color: #3498db;
-            -webkit-animation: spinner 1.5s linear infinite;
-            animation: spinner 1.5s linear infinite;
+        
+        /* --- MODE BUTTON STYLING (Fixed: Prominent, distinct buttons with high contrast) --- */
+        .mode-button {
+            /* Base styling for all mode buttons */
+            @apply px-3 py-1.5 text-sm font-semibold transition duration-150 rounded-lg shadow-md;
         }
-        @-webkit-keyframes spinner {
-            0% { -webkit-transform: rotate(0deg); }
-            100% { -webkit-transform: rotate(360deg); }
+        .mode-active {
+            /* Active state: Bright yellow background */
+            @apply bg-yellow-500 text-gray-900 hover:bg-yellow-400; 
         }
-        @keyframes spinner {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .mode-inactive {
+            /* Inactive state: High-contrast light gray block for clear button definition */
+            @apply text-gray-900 bg-gray-300 hover:bg-gray-400; 
+        }
+        /* ---------------------------------------------------------------------- */
+
+        #selection-status-text {
+            @apply text-xs text-gray-300 px-2 py-1 bg-gray-700 rounded-lg whitespace-nowrap;
+        }
+        #color-picker {
+            border: 2px solid #374151;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        /* Scene List Item Styling */
+        .scene-item {
+            @apply p-2 text-sm text-gray-200 cursor-pointer rounded-md transition duration-100 mb-1 truncate;
+        }
+        .scene-item:hover {
+            @apply bg-gray-600;
+        }
+        .scene-item.selected {
+            @apply bg-blue-600 font-bold text-white;
         }
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+<body>
 
-    <!-- Main App Container -->
-    <div id="appContainer" class="h-screen flex flex-col items-center justify-between p-4 bg-gray-100 dark:bg-gray-900">
-        <!-- Header with title and theme and settings toggle -->
-        <header class="w-full max-w-3xl flex justify-between items-center p-4">
-            <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100">Zultra AI</h1>
-            <div class="flex space-x-2 items-center">
-                <button id="openSettingsBtn" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 transition-colors shadow-md text-sm font-semibold">
-                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                </button>
-                <!-- Moon icon for light mode -->
-                <button id="themeToggle" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 transition-colors">
-                    <svg id="moonIcon" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                    <!-- Sun icon for dark mode -->
-                    <svg id="sunIcon" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                </button>
-            </div>
-        </header>
+    <!-- Top Control Bar (All Tools) -->
+    <div id="top-bar" class="flex items-center justify-between p-2 bg-gray-800 shadow-xl border-b border-gray-700">
 
-        <!-- Chat history area -->
-        <div id="chatHistory" class="flex-1 w-full max-w-3xl overflow-y-auto p-4 space-y-4 scroll-smooth">
-            <!-- Chat messages will be dynamically added here -->
-        </div>
-        
-        <!-- Input area -->
-        <div class="w-full max-w-3xl flex flex-col p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
-            <!-- Uploaded files preview -->
-            <div id="uploadedFilesContainer" class="flex flex-wrap items-center p-2 mb-2 space-x-2 hidden">
-                <!-- File previews will be dynamically added here -->
-            </div>
-            <div class="flex items-center w-full">
-                <textarea id="promptInput" rows="1" class="flex-1 p-2 text-gray-700 dark:text-gray-200 bg-transparent resize-none focus:outline-none placeholder-gray-400 dark:placeholder-gray-500" placeholder="Type your message..."></textarea>
-                <label for="fileUpload" class="ml-4 p-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-full cursor-pointer hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                    </svg>
-                </label>
-                <input type="file" id="fileUpload" class="hidden" multiple />
-                <button id="sendBtn" class="ml-4 p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors shadow-md">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Main Settings Modal -->
-    <div id="mainSettingsModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg">
-            <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">Settings</h2>
+        <!-- Left Section: Creation Tools -->
+        <div class="flex space-x-1.5 items-center">
+            <h1 class="text-lg font-bold text-white pr-2 border-r border-gray-700">3D Builder</h1>
+            <button onclick="addShape('box')" class="py-1 px-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg shadow-md transition duration-200">
+                Cube
+            </button>
+            <button onclick="addShape('sphere')" class="py-1 px-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg shadow-md transition duration-200">
+                Sphere
+            </button>
+            <button onclick="addShape('torus')" class="py-1 px-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg shadow-md transition duration-200">
+                Torus
+            </button>
             
-            <!-- Tab Buttons -->
-            <div class="flex border-b border-gray-200 dark:border-gray-700 mb-4">
-                <button id="apiTabBtn" class="tab-btn px-4 py-2 text-gray-800 dark:text-gray-100 font-semibold border-b-2 border-transparent hover:border-blue-600 transition-colors">API Settings</button>
+            <button onclick="addShape('triangle')" class="py-1 px-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm rounded-lg shadow-md transition duration-200">
+                Triangle
+            </button>
+            <button onclick="addShape('cylinder')" class="py-1 px-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg shadow-md transition duration-200">
+                Cylinder
+            </button>
+        </div>
+
+        <!-- Center Section: Interactive Mode Toggles (Now in one box) -->
+        <div class="flex space-x-1.5 p-1 rounded-lg bg-gray-700 shadow-inner items-center">
+            <button id="mode-translate" onclick="setTransformMode('translate')" class="mode-button mode-active">
+                Move
+            </button>
+            <button id="mode-rotate" onclick="setTransformMode('rotate')" class="mode-button mode-inactive">
+                Rotate
+            </button>
+            <button id="mode-scale" onclick="setTransformMode('scale')" class="mode-button mode-inactive">
+                Scale
+            </button>
+        </div>
+
+        <!-- Right Section: Status, Color, and Delete -->
+        <div class="flex space-x-3 items-center">
+            <span id="selection-status-text">No object selected.</span>
+            
+            <!-- Color Picker Group -->
+            <div class="flex items-center space-x-1">
+                <label for="color-picker" class="text-sm font-medium text-gray-300">Color:</label>
+                <input type="color" id="color-picker" oninput="setColor(this.value)" class="w-8 h-8 rounded-lg shadow-md disabled:opacity-50" disabled>
             </div>
             
-            <!-- Tab Content -->
-            <div id="apiTabContent" class="tab-content">
-                <div class="mb-4">
-                    <label for="apiKeyInput" class="block text-gray-700 dark:text-gray-300 mb-2">API Key:</label>
-                    <input type="password" id="apiKeyInput" class="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your API Key">
-                </div>
-                <div class="mb-4">
-                    <label for="apiUrlInput" class="block text-gray-700 dark:text-gray-300 mb-2">API URL:</label>
-                    <input type="text" id="apiUrlInput" class="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter API URL">
-                </div>
-                <p class="text-red-500 text-sm mt-4">You have to provide your own API key/URL.</p>
-                <div class="flex justify-end space-x-2 mt-4">
-                    <button id="saveApiSettingsBtn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">Save</button>
-                </div>
-            </div>
-
-            <div class="flex justify-end space-x-2 mt-4">
-                <button id="closeMainSettingsBtn" class="bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Global Message/Alert Box -->
-    <div id="messageBox" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl text-center max-w-sm w-full">
-            <p id="messageText" class="text-gray-800 dark:text-gray-100 mb-4"></p>
-            <button id="closeMessage" class="bg-blue-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-blue-700 transition-colors">OK</button>
-        </div>
-    </div>
-
-    <!-- Top-right Notification -->
-    <div id="notification" class="hidden fixed top-4 right-4 z-50">
-        <div class="bg-green-500 text-white p-4 rounded-lg shadow-lg flex items-center space-x-2">
-            <span id="notificationMessage"></span>
-            <button id="closeNotificationBtn" class="text-white hover:text-gray-200">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+            <button id="delete-btn" onclick="deleteObject()" class="py-1 px-3 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg shadow-md transition duration-200 disabled:opacity-50" disabled>
+                Delete
             </button>
         </div>
     </div>
 
-    <script type="module">
-        // UI Element References
-        const openSettingsBtn = document.getElementById('openSettingsBtn');
-        const mainSettingsModal = document.getElementById('mainSettingsModal');
-        const closeMainSettingsBtn = document.getElementById('closeMainSettingsBtn');
+    <!-- Main Content Area: Scene Panel and Canvas -->
+    <div id="main-content-wrapper">
         
-        const apiTabBtn = document.getElementById('apiTabBtn');
-        const apiTabContent = document.getElementById('apiTabContent');
+        <!-- Left Panel: Scene Hierarchy & Renaming -->
+        <div id="left-panel" class="p-3">
+            <h2 class="text-lg font-bold text-white mb-3 pb-2 border-b border-gray-600">Viewer</h2>
+            
+            <!-- Scrollable Object List -->
+            <div id="scene-list-container" class="flex-grow overflow-y-auto">
+                <div id="scene-list" class="mb-4">
+                    <!-- Object list will be populated here -->
+                </div>
+            </div>
+            
+            <!-- Rename Tool -->
+            <div class="mt-4 pt-4 border-t border-gray-600 flex-shrink-0">
+                <label for="rename-input" class="text-sm text-gray-400 block mb-1">Rename Selected:</label>
+                <input type="text" id="rename-input" placeholder="Object Name" oninput="renameSelected(this.value)" class="w-full p-2 bg-gray-600 text-white rounded text-sm disabled:opacity-50" disabled>
+            </div>
 
-        const apiKeyInput = document.getElementById('apiKeyInput');
-        const apiUrlInput = document.getElementById('apiUrlInput');
-        const saveApiSettingsBtn = document.getElementById('saveApiSettingsBtn');
+            <!-- File Operations (Export/Import) -->
+            <div class="mt-4 pt-4 border-t border-gray-600 flex-shrink-0 space-y-3">
+                <h3 class="text-sm font-bold text-gray-300">File Operations (OBJ)</h3>
+                
+                <!-- Export Button -->
+                <button onclick="exportOBJ()" class="w-full p-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-semibold shadow-md transition duration-200">
+                    Export Scene (.obj)
+                </button>
+                
+                <!-- Import Button (Styled as a button using label) -->
+                <label for="import-input" class="w-full flex justify-center p-2 bg-green-500 hover:bg-green-600 text-white rounded text-sm font-semibold shadow-md transition duration-200 cursor-pointer">
+                    Import (.obj)
+                    <input type="file" id="import-input" accept=".obj" onchange="handleImport(event)" class="hidden">
+                </label>
+                <p class="text-xs text-gray-400 mt-1">Note: Complex formats like FBX are not supported in this environment.</p>
+            </div>
+
+        </div>
+
+        <!-- Canvas Container -->
+        <div id="canvas-container">
+            <!-- The Three.js renderer will append its canvas here -->
+        </div>
+    </div>
+    
+    <!-- Three.js Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+    <!-- Add OBJ Loader and Exporter -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/OBJExporter.js"></script>
+
+
+    <script>
+        // --- Global Variables and Setup ---
+        let scene, camera, renderer, controls, raycaster, mouse;
+        let transformControls;
+        let selectedObject = null;
+        const objects = [];
+        const INTERSECTED_COLOR = 0xffa500; // Orange for selected
+        const DEFAULT_COLOR = 0x1e90ff; // Dodger Blue
+        let objectCounter = 1;
         
-        const messageBox = document.getElementById('messageBox');
-        const messageText = document.getElementById('messageText');
-        const closeMessageBtn = document.getElementById('closeMessage');
-        const fileUploadInput = document.getElementById('fileUpload');
-        const uploadedFilesContainer = document.getElementById('uploadedFilesContainer');
-        const sendBtn = document.getElementById('sendBtn');
-        const promptInput = document.getElementById('promptInput');
-        const chatHistory = document.getElementById('chatHistory');
-        const notification = document.getElementById('notification');
-        const notificationMessage = document.getElementById('notificationMessage');
-        const closeNotificationBtn = document.getElementById('closeNotificationBtn');
-        const body = document.body;
+        let objLoader;
+        let objExporter;
 
-        let uploadedFiles = [];
-        let currentApiKey = localStorage.getItem('currentApiKey') || '';
-        let currentApiUrl = localStorage.getItem('currentApiUrl') || '';
+        // --- Initialization Function ---
+        function init() {
+            const container = document.getElementById('canvas-container');
+
+            // Scene Setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x2d3748);
+
+            // Camera Setup
+            camera = new THREE.PerspectiveCamera(75, 2, 0.1, 1000); 
+            camera.position.set(5, 5, 5);
+
+            // Renderer Setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            container.appendChild(renderer.domElement);
+            
+            // Call resize immediately to set initial size and camera aspect
+            onWindowResize(); 
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 5);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+            directionalLight.position.set(10, 10, 5);
+            scene.add(directionalLight);
+
+            // Orbit Controls (Camera navigation)
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true; 
+            controls.dampingFactor = 0.05;
+            controls.screenSpacePanning = false;
+            controls.minDistance = 1;
+            controls.maxDistance = 50;
+            controls.target.set(0, 0, 0); 
+
+            // Transform Controls (Gizmo for object manipulation)
+            transformControls = new THREE.TransformControls(camera, renderer.domElement);
+            transformControls.visible = false;
+            scene.add(transformControls);
+            transformControls.setMode("translate"); // Default mode
+
+            // TransformControls Events
+            transformControls.addEventListener('change', animate);
+            
+            transformControls.addEventListener('dragging-changed', function (event) {
+                // Disable OrbitControls while the gizmo is being dragged
+                controls.enabled = !event.value; 
+            });
+            
+            // Initialize OBJ Loader and Exporter
+            objLoader = new THREE.OBJLoader();
+            objExporter = new THREE.OBJExporter();
+
+
+            // Raycaster and Mouse vector for interaction
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // Add a ground plane for reference
+            const planeGeometry = new THREE.PlaneGeometry(20, 20);
+            const planeMaterial = new THREE.MeshPhongMaterial({ color: 0x4a5568, side: THREE.DoubleSide });
+            const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+            plane.rotation.x = Math.PI / 2;
+            plane.position.y = -2;
+            scene.add(plane);
+
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize, false);
+            renderer.domElement.addEventListener('click', onCanvasClick, false);
+            
+            // Initial hierarchy update
+            updateSceneHierarchy();
+
+            // Start the animation loop
+            animate();
+        }
 
         // --- Core Functions ---
-        function showMessage(text) {
-            messageText.textContent = text;
-            messageBox.classList.remove('hidden');
+
+        /**
+         * Animation loop
+         */
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update(); 
+            renderer.render(scene, camera);
         }
 
-        function showNotification(text) {
-            notificationMessage.textContent = text;
-            notification.classList.remove('hidden');
-            setTimeout(() => {
-                notification.classList.add('hidden');
-            }, 3000);
-        }
+        /**
+         * Handles window resizing to keep the canvas responsive and sets initial size.
+         */
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
 
-        function displayUploadedFiles() {
-            uploadedFilesContainer.innerHTML = '';
-            if (uploadedFiles.length > 0) {
-                uploadedFilesContainer.classList.remove('hidden');
-            } else {
-                uploadedFilesContainer.classList.add('hidden');
+            // Only update if dimensions are valid (prevents issues on load)
+            if (width > 0 && height > 0) {
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
             }
+        }
 
-            uploadedFiles.forEach((file, index) => {
-                const filePreview = document.createElement('div');
-                filePreview.classList.add('relative', 'flex', 'items-center', 'p-2', 'bg-gray-200', 'dark:bg-gray-700', 'rounded-lg');
+        /**
+         * Renders the current list of objects in the Scene Hierarchy panel.
+         */
+        function updateSceneHierarchy() {
+            const sceneList = document.getElementById('scene-list');
+            sceneList.innerHTML = ''; // Clear existing list
+
+            objects.forEach((obj, index) => {
+                const item = document.createElement('div');
+                item.textContent = obj.userData.name;
+                item.classList.add('scene-item');
                 
-                if (file.type.startsWith('image/')) {
-                    const img = document.createElement('img');
-                    img.src = URL.createObjectURL(file);
-                    img.classList.add('h-16', 'w-16', 'object-cover', 'rounded-lg', 'mr-2');
-                    filePreview.appendChild(img);
+                // Add index and event listener to select via panel
+                item.dataset.index = index;
+                item.addEventListener('click', () => {
+                    selectObject(obj);
+                });
+
+                // Highlight if currently selected
+                if (selectedObject === obj) {
+                    item.classList.add('selected');
                 }
-                
-                const fileNameSpan = document.createElement('span');
-                fileNameSpan.classList.add('text-sm', 'text-gray-800', 'dark:text-gray-200', 'mr-2');
-                fileNameSpan.textContent = file.name;
-                filePreview.appendChild(fileNameSpan);
 
-                const removeBtn = document.createElement('button');
-                removeBtn.classList.add('remove-file-btn', 'text-red-500', 'hover:text-red-700', 'text-sm', 'font-bold');
-                removeBtn.dataset.index = index;
-                removeBtn.textContent = 'X';
-                filePreview.appendChild(removeBtn);
-
-                uploadedFilesContainer.appendChild(filePreview);
+                sceneList.appendChild(item);
             });
+        }
+
+        /**
+         * Renames the currently selected object.
+         * @param {string} newName - The new name for the object.
+         */
+        function renameSelected(newName) {
+            if (!selectedObject || !newName.trim()) return;
+            selectedObject.userData.name = newName.trim();
+            updateSceneHierarchy();
+        }
+
+        /**
+         * Sets the mode for the TransformControls gizmo.
+         * Also updates the visual state of the mode buttons.
+         * @param {string} mode - 'translate', 'rotate', or 'scale'.
+         */
+        function setTransformMode(mode) {
+            transformControls.setMode(mode);
+            
+            // Update button styles
+            ['translate', 'rotate', 'scale'].forEach(m => {
+                const btn = document.getElementById(`mode-${m}`);
+                if (btn) {
+                    if (m === mode) {
+                        btn.classList.remove('mode-inactive');
+                        btn.classList.add('mode-active');
+                    } else {
+                        btn.classList.remove('mode-active');
+                        btn.classList.add('mode-inactive');
+                    }
+                }
+            });
+            console.log("Gizmo Mode:", mode);
         }
         
-        function addMessage(text, sender, citations = [], thinkingTime = null) {
-            const messageContainer = document.createElement('div');
-            const bubble = document.createElement('div');
-            const citationsDiv = document.createElement('div');
-            const thinkingTimeDiv = document.createElement('div');
+        /**
+         * Sets the color of the selected object using a hex string.
+         * @param {string} colorHex - The new color in hex string format (e.g., #ff0000).
+         */
+        function setColor(colorHex) {
+            if (!selectedObject) return;
+            selectedObject.material.color.set(colorHex);
+            selectedObject.userData.customColor = colorHex; // Store custom color for re-selection
+        }
+        
+        /**
+         * Maps type key to a display name.
+         * @param {string} type - The geometry key ('box', 'sphere', etc.).
+         * @returns {string} The capitalized display name.
+         */
+        function getBaseName(type) {
+            const shapeMap = {
+                'box': 'Cube',
+                'sphere': 'Sphere',
+                'torus': 'Torus',
+                'cylinder': 'Cylinder',
+                'triangle': 'Triangle',
+            };
+            return shapeMap[type] || 'Object';
+        }
+
+        /**
+         * Adds a basic shape to the scene.
+         * @param {string} type - The type of geometry ('box', 'sphere', 'torus', 'triangle', 'cylinder').
+         */
+        function addShape(type) {
+            let geometry;
+            switch (type) {
+                case 'box':
+                    geometry = new THREE.BoxGeometry(1, 1, 1);
+                    break;
+                case 'sphere':
+                    geometry = new THREE.SphereGeometry(0.75, 32, 32);
+                    break;
+                case 'torus':
+                    geometry = new THREE.TorusGeometry(0.7, 0.3, 16, 100);
+                    break;
+                case 'cylinder':
+                    // Standard Cylinder
+                    geometry = new THREE.CylinderGeometry(0.5, 0.5, 1.5, 32);
+                    break;
+                case 'triangle':
+                    // Triangular Prism (Cylinder with 3 radial segments)
+                    geometry = new THREE.CylinderGeometry(0.75, 0.75, 1.5, 3);
+                    break;
+                default:
+                    return;
+            }
+
+            const material = new THREE.MeshPhongMaterial({ color: DEFAULT_COLOR });
+            const mesh = new THREE.Mesh(geometry, material);
+
+            mesh.position.set(
+                (Math.random() - 0.5) * 5,
+                (Math.random() * 2) + 0.5,
+                (Math.random() - 0.5) * 5
+            );
             
-            if (sender === 'user') {
-                messageContainer.classList.add('flex', 'justify-end', 'mb-2');
-                bubble.classList.add('chat-bubble-user', 'p-3', 'rounded-lg', 'max-w-md', 'break-words', 'shadow-lg');
+            // Get base name and use the counter for uniqueness (e.g., "Cube 1")
+            const baseName = getBaseName(type);
+            const defaultName = baseName + ' ' + objectCounter++;
+            mesh.userData.name = defaultName;
+            mesh.userData.customColor = '#' + new THREE.Color(DEFAULT_COLOR).getHexString();
+
+            objects.push(mesh);
+            scene.add(mesh);
+            
+            // Auto-select the newly created object
+            selectObject(mesh);
+            updateSceneHierarchy(); // Update the list after adding
+        }
+
+        /**
+         * Handles mouse clicks on the canvas for object selection (Raycasting).
+         */
+        function onCanvasClick(event) {
+            if (transformControls.dragging) {
+                return;
+            }
+
+            const container = document.getElementById('canvas-container');
+            const rect = renderer.domElement.getBoundingClientRect();
+
+            mouse.x = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
+            mouse.y = - ((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObjects(objects, false);
+
+            if (intersects.length > 0) {
+                selectObject(intersects[0].object);
             } else {
-                messageContainer.classList.add('flex', 'justify-start', 'mb-2');
-                bubble.classList.add('chat-bubble-ai', 'p-3', 'rounded-lg', 'max-w-md', 'break-words', 'shadow-lg');
-                
-                const copyButton = document.createElement('button');
-                copyButton.textContent = 'Copy';
-                copyButton.classList.add('text-sm', 'text-blue-500', 'font-semibold', 'mt-2', 'hover:underline');
-                copyButton.addEventListener('click', () => {
-                    const textToCopy = bubble.textContent.replace('Copy', '').trim();
-                    const tempTextarea = document.createElement('textarea');
-                    tempTextarea.value = textToCopy;
-                    document.body.appendChild(tempTextarea);
-                    tempTextarea.select();
-                    try {
-                        document.execCommand('copy');
-                        showMessage("Text copied to clipboard!");
-                    } catch (err) {
-                        console.error('Failed to copy text: ', err);
-                        showMessage("Could not copy text to clipboard.");
-                    } finally {
-                        document.body.removeChild(tempTextarea);
-                    }
-                });
-                bubble.appendChild(copyButton);
+                selectObject(null);
+            }
+        }
 
-                if (citations.length > 0) {
-                    citationsDiv.classList.add('text-xs', 'text-gray-500', 'mt-2');
-                    const citationText = "Citations: " + citations.map(s => s.title).join(', ');
-                    citationsDiv.textContent = citationText;
-                }
+        /**
+         * Sets or clears the selected object.
+         * @param {THREE.Mesh | null} object - The object to select or null to deselect.
+         */
+        function selectObject(object) {
+            const colorPicker = document.getElementById('color-picker');
+            const renameInput = document.getElementById('rename-input');
+
+            // 1. Deselect previous object
+            if (selectedObject) {
+                const storedColor = selectedObject.userData.customColor || '#' + new THREE.Color(DEFAULT_COLOR).getHexString();
+                selectedObject.material.color.set(storedColor);
+            }
+
+            // 2. Set new selection
+            selectedObject = object;
+
+            // 3. Update UI and visual state
+            const statusTextEl = document.getElementById('selection-status-text');
+            const deleteBtn = document.getElementById('delete-btn');
+
+            if (selectedObject) {
+                const currentHex = '#' + selectedObject.material.color.getHexString();
+                selectedObject.userData.customColor = currentHex; 
+                
+                selectedObject.material.color.setHex(INTERSECTED_COLOR);
+
+                transformControls.attach(selectedObject);
+                transformControls.visible = true;
+                setTransformMode(transformControls.mode);
+
+                // Update Color Picker
+                colorPicker.value = currentHex;
+                colorPicker.disabled = false;
+
+                // Update Rename Input
+                renameInput.value = selectedObject.userData.name;
+                renameInput.disabled = false;
+                
+                // Update UI status
+                statusTextEl.textContent = `Selected: ${selectedObject.userData.name}`;
+                deleteBtn.disabled = false;
+            } else {
+                // Clear UI status
+                statusTextEl.textContent = 'No object selected.';
+                deleteBtn.disabled = true;
+                colorPicker.disabled = true;
+                renameInput.value = '';
+                renameInput.disabled = true;
+                transformControls.detach();
+                transformControls.visible = false;
             }
             
-            bubble.innerHTML = text;
-            messageContainer.appendChild(bubble);
-            if (citations.length > 0) {
-                 messageContainer.appendChild(citationsDiv);
+            updateSceneHierarchy(); // Update the hierarchy list to reflect selection state
+        }
+        
+        /**
+         * Deletes the currently selected object from the scene and the objects array.
+         */
+        function deleteObject() {
+            if (!selectedObject) return;
+
+            // Remove gizmo first
+            transformControls.detach();
+
+            // Remove from the scene
+            scene.remove(selectedObject);
+
+            // Remove from the tracking array
+            const index = objects.indexOf(selectedObject);
+            if (index > -1) {
+                objects.splice(index, 1);
             }
-            if (thinkingTime !== null) {
-                thinkingTimeDiv.classList.add('text-xs', 'text-gray-500', 'mt-1', 'italic');
-                thinkingTimeDiv.textContent = `Thought for: ${thinkingTime.toFixed(2)}s`;
-                bubble.appendChild(thinkingTimeDiv);
-            }
-            chatHistory.appendChild(messageContainer);
-            chatHistory.scrollTop = chatHistory.scrollHeight;
+
+            // Dispose of geometry and material to free memory (best practice)
+            selectedObject.geometry.dispose();
+            selectedObject.material.dispose();
+
+            // Deselect
+            selectObject(null);
+            updateSceneHierarchy(); // Update the list after deletion
+            console.log("Object deleted.");
         }
 
-        function addLoadingIndicator() {
-            const typingIndicator = document.createElement('div');
-            typingIndicator.id = 'loadingIndicator';
-            typingIndicator.classList.add('flex', 'justify-start', 'mb-2', 'p-3', 'rounded-lg', 'max-w-md');
-            typingIndicator.innerHTML = '<div class="spinner h-5 w-5 rounded-full border-2 border-gray-400"></div>';
-            chatHistory.appendChild(typingIndicator);
-            chatHistory.scrollTop = chatHistory.scrollHeight;
-        }
+        /**
+         * Handles the file import event (only supports OBJ).
+         * @param {Event} event - The file change event.
+         */
+        function handleImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
 
-        function removeLoadingIndicator() {
-            const indicator = document.getElementById('loadingIndicator');
-            if (indicator) {
-                indicator.remove();
-            }
-        }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const object = objLoader.parse(e.target.result);
+                    
+                    let firstMesh = null;
 
-        async function fileToGenerativePart(file) {
-            const base64EncodedDataPromise = new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result.split(',')[1]);
-                reader.readAsDataURL(file);
-            });
-            return {
-                inlineData: {
-                    data: await base64EncodedDataPromise,
-                    mimeType: file.type,
+                    // Traverse imported object to find meshes and add them to the scene
+                    object.traverse(function (child) {
+                        if (child.isMesh) {
+                            // Apply a standard material with the default color
+                            child.material = new THREE.MeshPhongMaterial({ color: DEFAULT_COLOR });
+                            
+                            // Set initial user data
+                            const baseName = "Imported";
+                            const defaultName = baseName + ' ' + objectCounter++;
+                            child.userData.name = defaultName;
+                            child.userData.customColor = '#' + new THREE.Color(DEFAULT_COLOR).getHexString();
+
+                            objects.push(child);
+                            scene.add(child);
+                            if (!firstMesh) firstMesh = child;
+                        }
+                    });
+
+                    updateSceneHierarchy();
+                    selectObject(firstMesh); // Select first mesh found
+                    console.log(`Imported geometry from ${file.name}`);
+                } catch (error) {
+                    console.error("Error importing OBJ file:", error);
                 }
             };
-        }
-        
-        function setSelectedTheme(gradient) {
-            themeOptionBtns.forEach(btn => btn.classList.remove('ring-4', 'ring-offset-2', 'ring-blue-500'));
-            const selectedBtn = document.querySelector(`button[data-gradient="${gradient}"]`);
-            if (selectedBtn) {
-                selectedBtn.classList.add('ring-4', 'ring-offset-2', 'ring-blue-500');
-            }
+            reader.readAsText(file);
         }
 
-        // --- Event Listeners and Initial Setup ---
-        window.onload = function() {
-            const themeToggle = document.getElementById('themeToggle');
-            const sunIcon = document.getElementById('sunIcon');
-            const moonIcon = document.getElementById('moonIcon');
-            const saveApiSettingsBtn = document.getElementById('saveApiSettingsBtn');
-            const apiTabBtn = document.getElementById('apiTabBtn');
-            const apiTabContent = document.getElementById('apiTabContent');
-            const openSettingsBtn = document.getElementById('openSettingsBtn');
-            const mainSettingsModal = document.getElementById('mainSettingsModal');
-            const closeMainSettingsBtn = document.getElementById('closeMainSettingsBtn');
-            const apiKeyInput = document.getElementById('apiKeyInput');
-            const apiUrlInput = document.getElementById('apiUrlInput');
-            const closeMessageBtn = document.getElementById('closeMessage');
-            const fileUploadInput = document.getElementById('fileUpload');
-            const uploadedFilesContainer = document.getElementById('uploadedFilesContainer');
-            const sendBtn = document.getElementById('sendBtn');
-            const promptInput = document.getElementById('promptInput');
-            const chatHistory = document.getElementById('chatHistory');
-            const notification = document.getElementById('notification');
-            const notificationMessage = document.getElementById('notificationMessage');
-            const closeNotificationBtn = document.getElementById('closeNotificationBtn');
+        /**
+         * Exports the entire scene as a single OBJ file.
+         */
+        function exportOBJ() {
+            // Exporter needs a group or scene to process
+            const exportGroup = new THREE.Group();
+            objects.forEach(obj => exportGroup.add(obj.clone())); // Clone objects to avoid changing scene
+
+            const result = objExporter.parse(exportGroup);
+
+            // Create a Blob and link to trigger download
+            const blob = new Blob([result], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = '3d_builder_scene.obj';
+            a.click();
             
-            closeMessageBtn.addEventListener('click', () => messageBox.classList.add('hidden'));
-            closeNotificationBtn.addEventListener('click', () => notification.classList.add('hidden'));
-
-            // Load saved settings
-            apiKeyInput.value = localStorage.getItem('currentApiKey') || '';
-            apiUrlInput.value = localStorage.getItem('currentApiUrl') || '';
-
-            // Dark mode toggle
-            const isDarkMode = localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
-            if (isDarkMode) {
-                document.documentElement.classList.add('dark');
-                sunIcon.classList.remove('hidden');
-                moonIcon.classList.add('hidden');
-            } else {
-                document.documentElement.classList.remove('dark');
-                sunIcon.classList.add('hidden');
-                moonIcon.classList.remove('hidden');
-            }
-
-            themeToggle.addEventListener('click', () => {
-                const htmlEl = document.documentElement;
-                if (htmlEl.classList.contains('dark')) {
-                    htmlEl.classList.remove('dark');
-                    sunIcon.classList.add('hidden');
-                    moonIcon.classList.remove('hidden');
-                    localStorage.setItem('theme', 'light');
-                } else {
-                    document.documentElement.classList.add('dark');
-                    sunIcon.classList.remove('hidden');
-                    moonIcon.classList.add('hidden');
-                    localStorage.setItem('theme', 'dark');
-                }
-            });
-
-            // Settings modal functionality
-            openSettingsBtn.addEventListener('click', () => {
-                mainSettingsModal.classList.remove('hidden');
-            });
-
-            closeMainSettingsBtn.addEventListener('click', () => {
-                mainSettingsModal.classList.add('hidden');
-            });
+            // Clean up the temporary URL
+            URL.revokeObjectURL(a.href);
             
-            saveApiSettingsBtn.addEventListener('click', () => {
-                currentApiKey = apiKeyInput.value.trim();
-                currentApiUrl = apiUrlInput.value.trim();
-                localStorage.setItem('currentApiKey', currentApiKey);
-                localStorage.setItem('currentApiUrl', currentApiUrl);
-                mainSettingsModal.classList.add('hidden');
-                showNotification("API settings saved!");
-            });
+            console.log("Scene exported as OBJ.");
+        }
 
-            // Handle file selection
-            fileUploadInput.addEventListener('change', (event) => {
-                uploadedFiles = [...event.target.files];
-                displayUploadedFiles();
-            });
 
-            // Handle file removal
-            uploadedFilesContainer.addEventListener('click', (event) => {
-                if (event.target.classList.contains('remove-file-btn')) {
-                    const index = event.target.dataset.index;
-                    uploadedFiles.splice(index, 1);
-                    fileUploadInput.value = ''; // Reset file input
-                    displayUploadedFiles();
-                }
-            });
-
-            sendBtn.addEventListener('click', async () => {
-                const prompt = promptInput.value.trim();
-                if (!prompt && uploadedFiles.length === 0) {
-                    showMessage("Please enter a prompt or upload a file before generating.");
-                    return;
-                }
-                
-                if (!currentApiKey || !currentApiUrl) {
-                    addMessage("Please Check your API Settings. (You can look up the API URL for the AI you're Using, and for the API KEY, you will have to go to the AI's Website and look for  \"API\" or \"API Keys\" in your profile tab.)", 'ai');
-                    return;
-                }
-
-                addMessage(prompt, 'user');
-                promptInput.value = '';
-                promptInput.style.height = 'auto';
-
-                addLoadingIndicator();
-                
-                let generatedText = "I'm sorry, I couldn't generate a response. Please check your network connection and try again.";
-                let sources = [];
-                let payload;
-                const startTime = performance.now();
-
-                try {
-                    const apiKey = currentApiKey;
-                    const apiUrl = currentApiUrl;
-                    
-                    if (uploadedFiles.length > 0) {
-                        const fileParts = await Promise.all(uploadedFiles.map(file => fileToGenerativePart(file)));
-                        payload = {
-                            contents: [{
-                                parts: [{ text: prompt }, ...fileParts]
-                            }],
-                            tools: [{ "google_search": {} }]
-                        };
-                    } else {
-                        payload = {
-                            contents: [{ parts: [{ text: prompt }] }],
-                            tools: [{ "google_search": {} }]
-                        };
-                    }
-
-                    let retries = 0;
-                    const maxRetries = 3;
-                    let response;
-                    while (retries < maxRetries) {
-                        try {
-                            response = await fetch(`${apiUrl}?key=${apiKey}`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(payload)
-                            });
-                            if (response.ok) {
-                                break;
-                            }
-                        } catch (error) {
-                            console.error(`Fetch attempt ${retries + 1} failed:`, error);
-                        }
-                        retries++;
-                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retries) * 1000));
-                    }
-                    
-                    if (!response.ok) {
-                        throw new Error(`API call failed with status: ${response.status}`);
-                    }
-
-                    const result = await response.json();
-                    const candidate = result.candidates?.[0];
-                    if (candidate && candidate.content?.parts?.[0]?.text) {
-                        generatedText = candidate.content.parts[0].text;
-                        const groundingMetadata = candidate.groundingAttributions;
-                        if (groundingMetadata && groundingMetadata.groundingAttributions) {
-                            sources = groundingMetadata.groundingAttributions
-                                .map(attribution => ({ uri: attribution.web?.uri, title: attribution.web?.title, }))
-                                .filter(source => source.uri && source.title);
-                        }
-                    }
-                } catch (error) {
-                    console.error('An error occurred:', error);
-                    showMessage("Failed to get a response. Please check your network connection and try again.");
-                } finally {
-                    const endTime = performance.now();
-                    const thinkingTime = (endTime - startTime) / 1000;
-                    removeLoadingIndicator();
-                    addMessage(generatedText, 'ai', sources, thinkingTime);
-                    uploadedFiles = [];
-                    displayUploadedFiles();
-                }
-            });
-            
-            promptInput.addEventListener('input', () => {
-                promptInput.style.height = 'auto';
-                promptInput.style.height = promptInput.scrollHeight + 'px';
-            });
-        };
+        // Wait for the window to load before starting the 3D application
+        window.onload = init;
     </script>
 </body>
 </html>
